@@ -17,9 +17,9 @@
 
 #define CHATTING    1000                   // 메시지 타입: 채팅
 #define DRAWLINE    1001                   // 메시지 타입: 선 그리기
-#define RECTANGLE   1002
-#define CIRCLE      1003
-#define TRIANGLE    1004
+#define DRAWREC     1002
+#define DRAWCIR     1003
+#define DRAWTRI     1004
 
 #define WM_DRAWIT   (WM_USER+1)            // 사용자 정의 윈도우 메시지
 
@@ -48,14 +48,17 @@ struct DRAWLINE_MSG
     int  x0, y0;
     int  x1, y1;
     char dummy[BUFSIZE - 6 * sizeof(int)];
+    BOOL flag;
 };
 
+/*----  Term Project 구현 사항  ----*/
 struct DRAWRECT_MSG {
     int type;
     int color;
     int x0, y0;
     int x1, y1;
-
+    char dummy[BUFSIZE - 6 * sizeof(int)];
+    BOOL flag;
 };
 
 struct DRAWCIR_MSG {
@@ -63,7 +66,8 @@ struct DRAWCIR_MSG {
     int color;
     double rad;
     int x0, y0;
-
+    char dummy[BUFSIZE - 6 * sizeof(int)];
+    BOOL flag;
 };
 //원 같은 경우는 시작하는 점 기준으로
 //width와 height이 바뀌는 것을 토대로 타원 모양일지 원 모양일지 결정
@@ -71,6 +75,7 @@ struct DRAWCIR_MSG {
 struct DRAWTRI_MSG {
     int type;
     int color;
+    BOOL flag;
 };
 //삼각형 같은 경우는 시작하는 점을 기준으로 조절하는 길이 비율이 조절 됨
 //예를 들면 처음 특정 점에서 시작하면 width를 조절하면 밑변의 길이가 조절이 되고
@@ -92,9 +97,9 @@ static DRAWLINE_MSG  g_drawmsg; // 선 그리기 메시지 저장
 static int           g_drawcolor; // 선 그리기 색상
 
 //Term Project 구현 사항
-static DRAWRECT_MSG  g_drawingRec; //직사각형 그리기 메시지 저장
-static DRAWCIR_MSG   g_drawingCir; //원 그리기 메시지 저장
-static DRAWTRI_MSG   g_drawingTri; //삼각형 그리기 메시지 저장
+static DRAWRECT_MSG  g_drawRec; //직사각형 그리기 메시지 저장
+static DRAWCIR_MSG   g_drawCir; //원 그리기 메시지 저장
+static DRAWTRI_MSG   g_drawTri; //삼각형 그리기 메시지 저장
 
 // 대화상자 프로시저
 BOOL CALLBACK DlgProc(HWND, UINT, WPARAM, LPARAM);
@@ -130,12 +135,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     g_chatmsg.type = CHATTING;
     g_drawmsg.type = DRAWLINE;
     g_drawmsg.color = RGB(255, 0, 0);
+    g_drawmsg.flag = TRUE;//기본값은 선 그리기로 해둠
 
     //Term Project 구현 된 변수 초기화
-    g_drawingRec.type = RECTANGLE;
-    g_drawingRec.color = RGB(255, 0, 0);
-    g_drawingCir.type = CIRCLE;
-    g_drawingCir.color = RGB(255, 0, 0);
+    g_drawRec.type = DRAWREC;
+    g_drawRec.color = RGB(255, 0, 0);
+    g_drawRec.flag = FALSE;
+    g_drawCir.type = DRAWCIR;
+    g_drawCir.color = RGB(255, 0, 0);
+    g_drawCir.flag = FALSE;
+    g_drawTri.type = DRAWTRI;
+    g_drawTri.color = RGB(255, 0, 0);
+    g_drawTri.flag = FALSE;
 
     // 대화상자 생성
     g_hInst = hInstance;
@@ -211,14 +222,17 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
         case IDC_ISIPV6:
+            //IPv6 주소로 접속 할 것입니까? Case
             g_isIPv6 = SendMessage(hButtonIsIPv6, BM_GETCHECK, 0, 0);
             if (g_isIPv6 == false)
                 SetDlgItemText(hDlg, IDC_IPADDR, SERVERIPV4);
             else
                 SetDlgItemText(hDlg, IDC_IPADDR, SERVERIPV6);
             return TRUE;
+            
 
         case IDC_CONNECT:
+            //접속 버튼 Case
             GetDlgItemText(hDlg, IDC_IPADDR, g_ipaddr, sizeof(g_ipaddr));
             g_port = GetDlgItemInt(hDlg, IDC_PORT, NULL, FALSE);
             g_isIPv6 = SendMessage(hButtonIsIPv6, BM_GETCHECK, 0, 0);
@@ -242,6 +256,7 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return TRUE;
 
         case IDC_SENDMSG:
+            //보내기 버튼 case
             // 읽기 완료를 기다림
             WaitForSingleObject(g_hReadEvent, INFINITE);
             GetDlgItemText(hDlg, IDC_MSG, g_chatmsg.buf, MSGSIZE);
@@ -252,18 +267,63 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return TRUE;
 
         case IDC_COLORRED:
+            //빨간색 버튼 case
             g_drawmsg.color = RGB(255, 0, 0);
+            g_drawRec.color = RGB(255, 0, 0);
+            g_drawCir.color = RGB(255, 0, 0);
+            g_drawTri.color = RGB(255, 0, 0);
             return TRUE;
 
         case IDC_COLORGREEN:
+            //초록색 버튼 case
             g_drawmsg.color = RGB(0, 255, 0);
+            g_drawRec.color = RGB(0, 255, 0);
+            g_drawCir.color = RGB(0, 255, 0);
+            g_drawTri.color = RGB(0, 255, 0);
             return TRUE;
 
         case IDC_COLORBLUE:
+            //파란색 버튼 case
             g_drawmsg.color = RGB(0, 0, 255);
+            g_drawRec.color = RGB(0, 0, 255);
+            g_drawCir.color = RGB(0, 0, 255);
+            g_drawTri.color = RGB(0, 0, 255);
+            return TRUE;
+
+        case IDC_LINE:
+            //기본값은 선 그리기 -> 어찌됬건 이놈을 눌렀을 때
+            g_drawmsg.flag = TRUE;
+            g_drawRec.flag = FALSE;
+            g_drawCir.flag = FALSE;
+            g_drawTri.flag = FALSE;
+            return TRUE;
+
+        case IDC_REC:
+            //직사각형 그리기
+            g_drawmsg.flag = FALSE;
+            g_drawRec.flag = TRUE;
+            g_drawCir.flag = FALSE;
+            g_drawTri.flag = FALSE;
+            return TRUE;
+
+        case IDC_CIR:
+            //원 그리기
+            g_drawmsg.flag = FALSE;
+            g_drawRec.flag = FALSE;
+            g_drawCir.flag = TRUE;
+            g_drawTri.flag = FALSE;
+            return TRUE;
+
+        case IDC_TRI:
+            //삼각형 그리기
+            g_drawmsg.flag = FALSE;
+            g_drawRec.flag = FALSE;
+            g_drawCir.flag = FALSE;
+            g_drawTri.flag = TRUE;
             return TRUE;
 
         case IDCANCEL:
+            //종료 버튼 case 
             if (MessageBox(hDlg, "정말로 종료하시겠습니까?",
                 "질문", MB_YESNO | MB_ICONQUESTION) == IDYES)
             {
@@ -374,6 +434,9 @@ DWORD WINAPI ReadThread(LPVOID arg)
                 MAKEWPARAM(draw_msg->x0, draw_msg->y0),
                 MAKELPARAM(draw_msg->x1, draw_msg->y1));
         }
+        /*else if (comm_msg.type == DRAWREC) {
+            일단 이 친구들은 저 밑에놈들이 구현 되는대로 처리하도록 하고
+        }*/
     }
 
     return 0;
@@ -466,7 +529,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             x0 = x1;
             y0 = y1;
+            if (g_drawmsg.flag == TRUE) {
+                printf("DrawLine\n");
+            }
+            //else if()
         }
+        //이 아저씨들을 어떻게든 써먹으면 될것 같다만?
+
         return 0;
     case WM_LBUTTONUP:
         bDrawing = FALSE;
