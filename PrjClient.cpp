@@ -17,6 +17,9 @@
 
 #define CHATTING    1000                   // 메시지 타입: 채팅
 #define DRAWLINE    1001                   // 메시지 타입: 선 그리기
+#define RECTANGLE   1002
+#define CIRCLE      1003
+#define TRIANGLE    1004
 
 #define WM_DRAWIT   (WM_USER+1)            // 사용자 정의 윈도우 메시지
 
@@ -47,6 +50,32 @@ struct DRAWLINE_MSG
     char dummy[BUFSIZE - 6 * sizeof(int)];
 };
 
+struct DRAWRECT_MSG {
+    int type;
+    int color;
+    int x0, y0;
+    int x1, y1;
+
+};
+
+struct DRAWCIR_MSG {
+    int type;
+    int color;
+    double rad;
+    int x0, y0;
+
+};
+//원 같은 경우는 시작하는 점 기준으로
+//width와 height이 바뀌는 것을 토대로 타원 모양일지 원 모양일지 결정
+
+struct DRAWTRI_MSG {
+    int type;
+    int color;
+};
+//삼각형 같은 경우는 시작하는 점을 기준으로 조절하는 길이 비율이 조절 됨
+//예를 들면 처음 특정 점에서 시작하면 width를 조절하면 밑변의 길이가 조절이 되고
+//height를 조절하면 높이가 조절이 되는 식으로 ㅇㅇ 
+
 static HINSTANCE     g_hInst; // 응용 프로그램 인스턴스 핸들
 static HWND          g_hDrawWnd; // 그림을 그릴 윈도우
 static HWND          g_hButtonSendMsg; // '메시지 전송' 버튼
@@ -61,6 +90,11 @@ static HANDLE        g_hReadEvent, g_hWriteEvent; // 이벤트 핸들
 static CHAT_MSG      g_chatmsg; // 채팅 메시지 저장
 static DRAWLINE_MSG  g_drawmsg; // 선 그리기 메시지 저장
 static int           g_drawcolor; // 선 그리기 색상
+
+//Term Project 구현 사항
+static DRAWRECT_MSG  g_drawingRec; //직사각형 그리기 메시지 저장
+static DRAWCIR_MSG   g_drawingCir; //원 그리기 메시지 저장
+static DRAWTRI_MSG   g_drawingTri; //삼각형 그리기 메시지 저장
 
 // 대화상자 프로시저
 BOOL CALLBACK DlgProc(HWND, UINT, WPARAM, LPARAM);
@@ -96,6 +130,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     g_chatmsg.type = CHATTING;
     g_drawmsg.type = DRAWLINE;
     g_drawmsg.color = RGB(255, 0, 0);
+
+    //Term Project 구현 된 변수 초기화
+    g_drawingRec.type = RECTANGLE;
+    g_drawingRec.color = RGB(255, 0, 0);
+    g_drawingCir.type = CIRCLE;
+    g_drawingCir.color = RGB(255, 0, 0);
 
     // 대화상자 생성
     g_hInst = hInstance;
