@@ -48,7 +48,6 @@ struct DRAWLINE_MSG
     int  x0, y0;
     int  x1, y1;
     char dummy[BUFSIZE - 6 * sizeof(int)];
-    BOOL flag;
 };
 
 /*----  Term Project 구현 사항  ----*/
@@ -57,17 +56,19 @@ struct DRAWRECT_MSG {
     int color;
     int x0, y0;
     int x1, y1;
+    int width;
+    int height;
     char dummy[BUFSIZE - 6 * sizeof(int)];
-    BOOL flag;
 };
+//직사각형 그리기 형식
 
 struct DRAWCIR_MSG {
     int type;
     int color;
     double rad;
     int x0, y0;
+    int x1, y1;
     char dummy[BUFSIZE - 6 * sizeof(int)];
-    BOOL flag;
 };
 //원 같은 경우는 시작하는 점 기준으로
 //width와 height이 바뀌는 것을 토대로 타원 모양일지 원 모양일지 결정
@@ -75,7 +76,9 @@ struct DRAWCIR_MSG {
 struct DRAWTRI_MSG {
     int type;
     int color;
-    BOOL flag;
+    int x0, y0;
+    int x1, y1;
+    char dummy[BUFSIZE - 6 * sizeof(int)];
 };
 //삼각형 같은 경우는 시작하는 점을 기준으로 조절하는 길이 비율이 조절 됨
 //예를 들면 처음 특정 점에서 시작하면 width를 조절하면 밑변의 길이가 조절이 되고
@@ -100,6 +103,7 @@ static int           g_drawcolor; // 선 그리기 색상
 static DRAWRECT_MSG  g_drawRec; //직사각형 그리기 메시지 저장
 static DRAWCIR_MSG   g_drawCir; //원 그리기 메시지 저장
 static DRAWTRI_MSG   g_drawTri; //삼각형 그리기 메시지 저장
+static int           g_drawMode;
 
 // 대화상자 프로시저
 BOOL CALLBACK DlgProc(HWND, UINT, WPARAM, LPARAM);
@@ -135,18 +139,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     g_chatmsg.type = CHATTING;
     g_drawmsg.type = DRAWLINE;
     g_drawmsg.color = RGB(255, 0, 0);
-    g_drawmsg.flag = TRUE;//기본값은 선 그리기로 해둠
-
+  
+    g_drawMode = 0; //기본 모드는 선 그리기 모드
     //Term Project 구현 된 변수 초기화
     g_drawRec.type = DRAWREC;
     g_drawRec.color = RGB(255, 0, 0);
-    g_drawRec.flag = FALSE;
+  
     g_drawCir.type = DRAWCIR;
     g_drawCir.color = RGB(255, 0, 0);
-    g_drawCir.flag = FALSE;
+  
     g_drawTri.type = DRAWTRI;
     g_drawTri.color = RGB(255, 0, 0);
-    g_drawTri.flag = FALSE;
+   
+
 
     // 대화상자 생성
     g_hInst = hInstance;
@@ -292,34 +297,22 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         case IDC_LINE:
             //기본값은 선 그리기 -> 어찌됬건 이놈을 눌렀을 때
-            g_drawmsg.flag = TRUE;
-            g_drawRec.flag = FALSE;
-            g_drawCir.flag = FALSE;
-            g_drawTri.flag = FALSE;
+            g_drawMode = 0;
             return TRUE;
 
         case IDC_REC:
             //직사각형 그리기
-            g_drawmsg.flag = FALSE;
-            g_drawRec.flag = TRUE;
-            g_drawCir.flag = FALSE;
-            g_drawTri.flag = FALSE;
+            g_drawMode = 1;
             return TRUE;
 
         case IDC_CIR:
             //원 그리기
-            g_drawmsg.flag = FALSE;
-            g_drawRec.flag = FALSE;
-            g_drawCir.flag = TRUE;
-            g_drawTri.flag = FALSE;
+            g_drawMode = 2; 
             return TRUE;
 
         case IDC_TRI:
             //삼각형 그리기
-            g_drawmsg.flag = FALSE;
-            g_drawRec.flag = FALSE;
-            g_drawCir.flag = FALSE;
-            g_drawTri.flag = TRUE;
+            g_drawMode = 3; 
             return TRUE;
 
         case IDCANCEL:
@@ -491,6 +484,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     static BOOL bDrawing = FALSE;
 
     switch (uMsg) {
+        //이 아저씨에서 조건 처리를 상당히 잘 해줘야 할 것 같겠습니다만...
+        //맘같아선 조건마다 다 따로 처리하고싶지만 귀찮으니 그냥 여기에 일일히 if else 문을 처리해주는 방식 채택
     case WM_CREATE:
         hDC = GetDC(hWnd);
 
@@ -511,36 +506,79 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         ReleaseDC(hWnd, hDC);
         return 0;
     case WM_LBUTTONDOWN:
+        //마우스 Left Button 이 눌러졌을 때
         x0 = LOWORD(lParam);
         y0 = HIWORD(lParam);
+        //이 아저씨들은 계속해서 지 좌표들을 갱신중임
         bDrawing = TRUE;
+        //지금 그리고있는 중입니다
         return 0;
     case WM_MOUSEMOVE:
         if (bDrawing && g_bStart) {
-            x1 = LOWORD(lParam);
-            y1 = HIWORD(lParam);
+            //g_bStart와 bDrawing이 일치중이라면?
+            if (g_drawMode == 0) {
+                //직선 그리기 모드
+                x1 = LOWORD(lParam);
+                y1 = HIWORD(lParam);
 
-            // 선 그리기 메시지 보내기
-            g_drawmsg.x0 = x0;
-            g_drawmsg.y0 = y0;
-            g_drawmsg.x1 = x1;
-            g_drawmsg.y1 = y1;
-            send(g_sock, (char *)&g_drawmsg, BUFSIZE, 0);
+                // 선 그리기 메시지 보내기
+                g_drawmsg.x0 = x0;
+                g_drawmsg.y0 = y0;
+                g_drawmsg.x1 = x1;
+                g_drawmsg.y1 = y1;
+                send(g_sock, (char*)&g_drawmsg, BUFSIZE, 0);
+                //클라이언트 소켓으로 drawmsg 아재를 보낸다. 
 
-            x0 = x1;
-            y0 = y1;
-            if (g_drawmsg.flag == TRUE) {
-                printf("DrawLine\n");
+                x0 = x1;
+                y0 = y1;
+                //계속해서 갱신되는 아저씨랑 똑같이 처리함으로써
+                //선이 그려지는 것을 표현
             }
-            //else if()
+            else if (g_drawMode == 1) {
+                //직사각형 그리기 모드
+                x1 = LOWORD(lParam);
+                y1 = HIWORD(lParam);
+
+                g_drawRec.x0 = x0;
+                g_drawRec.y0 = y0;
+                g_drawRec.x1 = x1;
+                g_drawRec.y1 = y1;
+             
+            }
+            else if (g_drawMode == 2) {
+                //원 그리기 모드
+                x1 = LOWORD(lParam);
+                y1 = HIWORD(lParam);
+
+                g_drawRec.x0 = x0;
+                g_drawRec.y0 = y0;
+                g_drawRec.x1 = x1;
+                g_drawRec.y1 = y1;
+                //일단 직사각형을 그리고 나머지 아재들을 처리한다
+            }
+            else if (g_drawMode == 3) {
+                //삼각형 그리기 모드
+                x1 = LOWORD(lParam);
+                y1 = HIWORD(lParam);
+
+                g_drawRec.x0 = x0;
+                g_drawRec.y0 = y0;
+                g_drawRec.x1 = x1;
+                g_drawRec.y1 = y1;
+                //일단 직사각형을 그리고 나머지 아재들을 처리한다. 
+            }
+            
         }
         //이 아저씨들을 어떻게든 써먹으면 될것 같다만?
 
         return 0;
     case WM_LBUTTONUP:
+        //Left Button이 Up 된 상태
         bDrawing = FALSE;
+        //Drawing은 False 처리
         return 0;
     case WM_DRAWIT:
+        //사용자 정의 ㅇㅇ
         hDC = GetDC(hWnd);
         hPen = CreatePen(PS_SOLID, 3, g_drawcolor);
 
