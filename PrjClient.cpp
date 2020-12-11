@@ -643,7 +643,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             SelectObject(hDC, hOldPen);
         }
         else if (g_drawMode == 2) {
-
+            hOldPen = (HPEN)SelectObject(hDC, hPen);
+            MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
+            Ellipse(hDC, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
+            SelectObject(hDC, hOldPen);
         }
         else if (g_drawMode == 3) {
 
