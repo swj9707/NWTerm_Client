@@ -408,6 +408,9 @@ DWORD WINAPI ReadThread(LPVOID arg)
     COMM_MSG comm_msg;
     CHAT_MSG *chat_msg;
     DRAWLINE_MSG *draw_msg;
+    DRAWRECT_MSG *rect_msg;
+    DRAWTRI_MSG *tri_msg;
+    DRAWCIR_MSG *cir_msg;
 
     while (1) {
         retval = recvn(g_sock, (char *)&comm_msg, BUFSIZE, 0);
@@ -427,9 +430,27 @@ DWORD WINAPI ReadThread(LPVOID arg)
                 MAKEWPARAM(draw_msg->x0, draw_msg->y0),
                 MAKELPARAM(draw_msg->x1, draw_msg->y1));
         }
-        /*else if (comm_msg.type == DRAWREC) {
-            일단 이 친구들은 저 밑에놈들이 구현 되는대로 처리하도록 하고
-        }*/
+        else if (comm_msg.type == DRAWREC) {
+            rect_msg = (DRAWRECT_MSG*)&comm_msg;
+            g_drawcolor = rect_msg->color;
+            SendMessage(g_hDrawWnd, WM_DRAWIT,
+                MAKEWPARAM(rect_msg->x0, rect_msg->y0),
+                MAKELPARAM(rect_msg->x1, rect_msg->y1));
+        }
+        else if (comm_msg.type == DRAWTRI) {
+            tri_msg = (DRAWTRI_MSG*)&comm_msg;
+            g_drawcolor = tri_msg->color;
+            SendMessage(g_hDrawWnd, WM_DRAWIT,
+                MAKEWPARAM(tri_msg->x0, tri_msg->y0),
+                MAKELPARAM(tri_msg->x1, tri_msg->y1));
+        }
+        else if (comm_msg.type == DRAWCIR) {
+            cir_msg = (DRAWCIR_MSG*)&comm_msg;
+            g_drawcolor = cir_msg->color;
+            SendMessage(g_hDrawWnd, WM_DRAWIT,
+                MAKEWPARAM(cir_msg->x0, cir_msg->y0),
+                MAKELPARAM(cir_msg->x1, cir_msg->y1));
+        }
     }
 
     return 0;
@@ -509,9 +530,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         //마우스 Left Button 이 눌러졌을 때
         x0 = LOWORD(lParam);
         y0 = HIWORD(lParam);
-        //이 아저씨들은 계속해서 지 좌표들을 갱신중임
+        //기준 좌표 입력
         bDrawing = TRUE;
-        //지금 그리고있는 중입니다
+        //지금 그리고있는 중입니다 판단하는 BOOL
         return 0;
     case WM_MOUSEMOVE:
         if (bDrawing && g_bStart) {
@@ -531,7 +552,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 x0 = x1;
                 y0 = y1;
-                //계속해서 갱신되는 아저씨랑 똑같이 처리함으로써
+                //계속해서 갱신되는 아저씨랑 이퀄 처리
                 //선이 그려지는 것을 표현
             }
             else if (g_drawMode == 1) {
@@ -541,31 +562,36 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 g_drawRec.x0 = x0;
                 g_drawRec.y0 = y0;
+                //얘들은 마우스 버튼 눌러졌을 때 이후로 변화없음
                 g_drawRec.x1 = x1;
                 g_drawRec.y1 = y1;
-             
+                //계속 변하는 아저씨들
+                //send(g_sock, (char*)&g_drawRec, BUFSIZE, 0);
             }
             else if (g_drawMode == 2) {
                 //원 그리기 모드
                 x1 = LOWORD(lParam);
                 y1 = HIWORD(lParam);
 
-                g_drawRec.x0 = x0;
-                g_drawRec.y0 = y0;
-                g_drawRec.x1 = x1;
-                g_drawRec.y1 = y1;
-                //일단 직사각형을 그리고 나머지 아재들을 처리한다
+                g_drawCir.x0 = x0;
+                g_drawCir.y0 = y0;
+                //얘들은 마우스 버튼 눌러졌을 때 이후로 변화없음
+                g_drawCir.x1 = x1;
+                g_drawCir.y1 = y1;                
+                //계속 변하는 아저씨들
+
             }
             else if (g_drawMode == 3) {
                 //삼각형 그리기 모드
                 x1 = LOWORD(lParam);
                 y1 = HIWORD(lParam);
 
-                g_drawRec.x0 = x0;
-                g_drawRec.y0 = y0;
-                g_drawRec.x1 = x1;
-                g_drawRec.y1 = y1;
-                //일단 직사각형을 그리고 나머지 아재들을 처리한다. 
+                g_drawTri.x0 = x0;
+                g_drawTri.y0 = y0;
+                //얘들은 마우스 버튼 눌러졌을 때 이후로 변화없음
+                g_drawTri.x1 = x1;
+                g_drawTri.y1 = y1;
+                //계속 변하는 아저씨들
             }
             
         }
@@ -576,24 +602,52 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         //Left Button이 Up 된 상태
         bDrawing = FALSE;
         //Drawing은 False 처리
+        if (g_drawMode != 0) {
+            if (g_drawMode == 1) {
+                send(g_sock, (char*)&g_drawRec, BUFSIZE, 0);
+            }
+            else if (g_drawMode == 2) {
+                send(g_sock, (char*)&g_drawCir, BUFSIZE, 0);
+            }
+            else if (g_drawMode == 3) {
+                send(g_sock, (char*)&g_drawTri, BUFSIZE, 0);
+            }
+        }
         return 0;
     case WM_DRAWIT:
         //사용자 정의 ㅇㅇ
         hDC = GetDC(hWnd);
         hPen = CreatePen(PS_SOLID, 3, g_drawcolor);
 
-        // 화면에 그리기
-        hOldPen = (HPEN)SelectObject(hDC, hPen);
-        MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
-        LineTo(hDC, LOWORD(lParam), HIWORD(lParam));
-        SelectObject(hDC, hOldPen);
+        if (g_drawMode == 0) {
+            // 화면에 그리기
+            hOldPen = (HPEN)SelectObject(hDC, hPen);
+            MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
+            LineTo(hDC, LOWORD(lParam), HIWORD(lParam));
+            SelectObject(hDC, hOldPen);
 
-        // 메모리 비트맵에 그리기
-        hOldPen = (HPEN)SelectObject(hDCMem, hPen);
-        MoveToEx(hDCMem, LOWORD(wParam), HIWORD(wParam), NULL);
-        LineTo(hDCMem, LOWORD(lParam), HIWORD(lParam));
-        SelectObject(hDC, hOldPen);
+            // 메모리 비트맵에 그리기
+            hOldPen = (HPEN)SelectObject(hDCMem, hPen);
+            MoveToEx(hDCMem, LOWORD(wParam), HIWORD(wParam), NULL);
+            LineTo(hDCMem, LOWORD(lParam), HIWORD(lParam));
+            SelectObject(hDC, hOldPen);
+        }
+        else if (g_drawMode == 1) {
+            hOldPen = (HPEN)SelectObject(hDC, hPen);
+            MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
+            //LOWORD x, HIWORD y -> 패러미터에 따라 다름
+            //wParam -> Point 0, lParam -> Point 1
+            //이 친구들을 통해 길이를 구해서 세팅하면 됨
+            //LineTo(hDC, LOWORD(lParam), HIWORD(lParam));
+            Rectangle(hDC, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
+            SelectObject(hDC, hOldPen);
+        }
+        else if (g_drawMode == 2) {
 
+        }
+        else if (g_drawMode == 3) {
+
+        }
         DeleteObject(hPen);
         ReleaseDC(hWnd, hDC);
         return 0;
