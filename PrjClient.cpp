@@ -618,7 +618,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         //사용자 정의 ㅇㅇ
         hDC = GetDC(hWnd);
         hPen = CreatePen(PS_SOLID, 3, g_drawcolor);
-
+        //wParam -> Point 0, lParam -> Point 1
         if (g_drawMode == 0) {
             // 화면에 그리기
             hOldPen = (HPEN)SelectObject(hDC, hPen);
@@ -635,10 +635,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         else if (g_drawMode == 1) {
             hOldPen = (HPEN)SelectObject(hDC, hPen);
             MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
-            //LOWORD x, HIWORD y -> 패러미터에 따라 다름
-            //wParam -> Point 0, lParam -> Point 1
-            //이 친구들을 통해 길이를 구해서 세팅하면 됨
-            //LineTo(hDC, LOWORD(lParam), HIWORD(lParam));
             Rectangle(hDC, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
             SelectObject(hDC, hOldPen);
         }
@@ -649,7 +645,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             SelectObject(hDC, hOldPen);
         }
         else if (g_drawMode == 3) {
-
+            hOldPen = (HPEN)SelectObject(hDC, hPen);
+            MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
+            //wParam, lParam 을 통해서 기준을 하나 잡는다. 어찌됬건 이녀석을 기준으로 하나의 사각형이 나옴
+            //직사각형을 통해 세개의 점에 대해 분석 해 낸다 -> 그다음 각각 줄을 그어주는 게 삼각형 만드는 원리?
+            SelectObject(hDC, hOldPen);
         }
         DeleteObject(hPen);
         ReleaseDC(hWnd, hDC);
