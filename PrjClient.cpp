@@ -595,7 +595,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             
         }
-        //이 아저씨들을 어떻게든 써먹으면 될것 같다만?
 
         return 0;
     case WM_LBUTTONUP:
@@ -634,13 +633,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         else if (g_drawMode == 1) {
             hOldPen = (HPEN)SelectObject(hDC, hPen);
-            MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
             Rectangle(hDC, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
             SelectObject(hDC, hOldPen);
         }
         else if (g_drawMode == 2) {
             hOldPen = (HPEN)SelectObject(hDC, hPen);
-            MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
             Ellipse(hDC, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
             SelectObject(hDC, hOldPen);
         }
@@ -649,6 +646,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
             //wParam, lParam 을 통해서 기준을 하나 잡는다. 어찌됬건 이녀석을 기준으로 하나의 사각형이 나옴
             //직사각형을 통해 세개의 점에 대해 분석 해 낸다 -> 그다음 각각 줄을 그어주는 게 삼각형 만드는 원리?
+
             SelectObject(hDC, hOldPen);
         }
         DeleteObject(hPen);
