@@ -340,7 +340,13 @@ DWORD WINAPI ClientMain(LPVOID arg)
     if (g_isIPv6 == false) {
         // socket()
         g_sock = socket(AF_INET, SOCK_STREAM, 0);
+        //소켓 생성
         if (g_sock == INVALID_SOCKET) err_quit("socket()");
+
+        u_long on = 1;
+        retval = ioctlsocket(g_sock, FIONBIO, &on);
+        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");
+        //넌블로킹 소켓 전환
 
         // connect()
         SOCKADDR_IN serveraddr;
@@ -354,7 +360,13 @@ DWORD WINAPI ClientMain(LPVOID arg)
     else {
         // socket()
         g_sock = socket(AF_INET6, SOCK_STREAM, 0);
+        //소켓 생성
         if (g_sock == INVALID_SOCKET) err_quit("socket()");
+
+        u_long on = 1;
+        retval = ioctlsocket(g_sock, FIONBIO, &on);
+        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");
+        //넌블로킹 소캣 전환
 
         // connect()
         SOCKADDR_IN6 serveraddr;
