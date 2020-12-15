@@ -257,8 +257,15 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 SetFocus(hEditMsg);
             }
             return TRUE;
-        //case IDC_LOGIN:
-
+        case IDC_LOGIN:
+            //ID PW를 일단 보낸다 -> 서버에 저장된 놈과 다르다면 뱉어냄
+            WaitForSingleObject(g_hReadEvent, INFINITE);
+            GetDlgItemText(hDlg, IDC_MSG, g_chatmsg.buf, MSGSIZE);
+            // 쓰기 완료를 알림
+            SetEvent(g_hWriteEvent);
+            // 입력된 텍스트 전체를 선택 표시
+            SendMessage(hEditMsg, EM_SETSEL, 0, -1);
+            return TRUE;
         case IDC_SENDMSG:
             //보내기 버튼 case
             // 읽기 완료를 기다림
@@ -342,9 +349,9 @@ DWORD WINAPI ClientMain(LPVOID arg)
         //소켓 생성
         if (g_sock == INVALID_SOCKET) err_quit("socket()");
 
-        /*u_long on = 1;
+        u_long on = 1;
         retval = ioctlsocket(g_sock, FIONBIO, &on);
-        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");*/
+        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");
         //넌블로킹 소켓 전환
 
         // connect()
