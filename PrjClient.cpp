@@ -151,8 +151,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     g_drawTri.type = DRAWTRI;
     g_drawTri.color = RGB(255, 0, 0);
    
-
-
     // 대화상자 생성
     g_hInst = hInstance;
     DialogBox(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, DlgProc);
@@ -259,6 +257,7 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 SetFocus(hEditMsg);
             }
             return TRUE;
+        //case IDC_LOGIN:
 
         case IDC_SENDMSG:
             //보내기 버튼 case
@@ -517,8 +516,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     static BOOL bDrawing = FALSE;
 
     switch (uMsg) {
-        //이 아저씨에서 조건 처리를 상당히 잘 해줘야 할 것 같겠습니다만...
-        //맘같아선 조건마다 다 따로 처리하고싶지만 귀찮으니 그냥 여기에 일일히 if else 문을 처리해주는 방식 채택
     case WM_CREATE:
         hDC = GetDC(hWnd);
 
@@ -577,8 +574,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 //얘들은 마우스 버튼 눌러졌을 때 이후로 변화없음
                 g_drawRec.x1 = x1;
                 g_drawRec.y1 = y1;
-                //계속 변하는 아저씨들
-                //send(g_sock, (char*)&g_drawRec, BUFSIZE, 0);
             }
             else if (g_drawMode == 2) {
                 //원 그리기 모드
@@ -590,7 +585,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 //얘들은 마우스 버튼 눌러졌을 때 이후로 변화없음
                 g_drawCir.x1 = x1;
                 g_drawCir.y1 = y1;                
-                //계속 변하는 아저씨들
 
             }
             else if (g_drawMode == 3) {
