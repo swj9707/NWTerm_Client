@@ -343,9 +343,9 @@ DWORD WINAPI ClientMain(LPVOID arg)
         //소켓 생성
         if (g_sock == INVALID_SOCKET) err_quit("socket()");
 
-        u_long on = 1;
+        /*u_long on = 1;
         retval = ioctlsocket(g_sock, FIONBIO, &on);
-        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");
+        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");*/
         //넌블로킹 소켓 전환
 
         // connect()
@@ -363,9 +363,9 @@ DWORD WINAPI ClientMain(LPVOID arg)
         //소켓 생성
         if (g_sock == INVALID_SOCKET) err_quit("socket()");
 
-        u_long on = 1;
+        /*u_long on = 1;
         retval = ioctlsocket(g_sock, FIONBIO, &on);
-        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");
+        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");*/
         //넌블로킹 소캣 전환
 
         // connect()
@@ -647,19 +647,65 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             hOldPen = (HPEN)SelectObject(hDC, hPen);
             Rectangle(hDC, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
             SelectObject(hDC, hOldPen);
+
+            hOldPen = (HPEN)SelectObject(hDCMem, hPen);
+            Rectangle(hDCMem, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
+            SelectObject(hDC, hOldPen);
+
         }
         else if (g_drawMode == 2) {
             hOldPen = (HPEN)SelectObject(hDC, hPen);
             Ellipse(hDC, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
             SelectObject(hDC, hOldPen);
+
+            hOldPen = (HPEN)SelectObject(hDCMem, hPen);
+            Ellipse(hDCMem, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
+            SelectObject(hDC, hOldPen);
         }
         else if (g_drawMode == 3) {
-            hOldPen = (HPEN)SelectObject(hDC, hPen);
-            MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
+            
             //wParam, lParam 을 통해서 기준을 하나 잡는다. 어찌됬건 이녀석을 기준으로 하나의 사각형이 나옴
             //직사각형을 통해 세개의 점에 대해 분석 해 낸다 -> 그다음 각각 줄을 그어주는 게 삼각형 만드는 원리?
+            if (HIWORD(wParam) >= HIWORD(lParam)) {
+                hOldPen = (HPEN)SelectObject(hDC, hPen);
+                MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);//첫번쨰 점으로 가서
+                LineTo(hDC, LOWORD(lParam), HIWORD(wParam));//x1 y0으로 줄 긋고
+                MoveToEx(hDC, (LOWORD(wParam)+LOWORD(lParam))/2, HIWORD(lParam), NULL);//맨 위에 변 중점으로 가서
+                LineTo(hDC, LOWORD(wParam), HIWORD(wParam));//x0y0
+                MoveToEx(hDC, (LOWORD(wParam) + LOWORD(lParam)) / 2, HIWORD(lParam), NULL);
+                LineTo(hDC, LOWORD(lParam), HIWORD(wParam));//x1y0
+                SelectObject(hDC, hOldPen);
 
-            SelectObject(hDC, hOldPen);
+
+                hOldPen = (HPEN)SelectObject(hDCMem, hPen);
+                MoveToEx(hDCMem, LOWORD(wParam), HIWORD(wParam), NULL);//첫번쨰 점으로 가서
+                LineTo(hDCMem, LOWORD(lParam), HIWORD(wParam));//x1 y0으로 줄 긋고
+                MoveToEx(hDCMem, (LOWORD(wParam) + LOWORD(lParam)) / 2, HIWORD(lParam), NULL);//맨 위에 변 중점으로 가서
+                LineTo(hDCMem, LOWORD(wParam), HIWORD(wParam));//x0y0
+                MoveToEx(hDCMem, (LOWORD(wParam) + LOWORD(lParam)) / 2, HIWORD(lParam), NULL);
+                LineTo(hDCMem, LOWORD(lParam), HIWORD(wParam));//x1y0
+                SelectObject(hDC, hOldPen);
+            }
+            else {
+                hOldPen = (HPEN)SelectObject(hDC, hPen);
+                MoveToEx(hDC, LOWORD(wParam), HIWORD(lParam), NULL);
+                LineTo(hDC, LOWORD(lParam), HIWORD(lParam));
+                MoveToEx(hDC, (LOWORD(wParam) + LOWORD(lParam)) / 2, HIWORD(wParam), NULL);
+                LineTo(hDC, LOWORD(wParam), HIWORD(lParam));
+                MoveToEx(hDC, (LOWORD(wParam) + LOWORD(lParam)) / 2, HIWORD(wParam), NULL);
+                LineTo(hDC, LOWORD(lParam), HIWORD(lParam));
+                SelectObject(hDC, hOldPen);
+
+                hOldPen = (HPEN)SelectObject(hDCMem, hPen);
+                MoveToEx(hDCMem, LOWORD(wParam), HIWORD(lParam), NULL);
+                LineTo(hDCMem, LOWORD(lParam), HIWORD(lParam));
+                MoveToEx(hDCMem, (LOWORD(wParam) + LOWORD(lParam)) / 2, HIWORD(wParam), NULL);
+                LineTo(hDCMem, LOWORD(wParam), HIWORD(lParam));
+                MoveToEx(hDCMem, (LOWORD(wParam) + LOWORD(lParam)) / 2, HIWORD(wParam), NULL);
+                LineTo(hDCMem, LOWORD(lParam), HIWORD(lParam));
+                SelectObject(hDCMem, hOldPen);
+                SelectObject(hDC, hOldPen);
+            }
         }
         DeleteObject(hPen);
         ReleaseDC(hWnd, hDC);
