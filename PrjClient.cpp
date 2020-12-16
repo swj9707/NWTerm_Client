@@ -17,9 +17,9 @@
 
 #define CHATTING    1000                   // 메시지 타입: 채팅
 #define DRAWLINE    1001                   // 메시지 타입: 선 그리기
-#define DRAWREC     1002
-#define DRAWCIR     1003
-#define DRAWTRI     1004
+#define DRAWREC     1002                   // 메시지 타입: 직사각형 그리기
+#define DRAWCIR     1003                   // 메시지 타입: 원 그리기
+#define DRAWTRI     1004                   // 메시지 타입: 삼각형 그리기
 
 #define WM_DRAWIT   (WM_USER+1)            // 사용자 정의 윈도우 메시지
 
@@ -41,7 +41,7 @@ struct CHAT_MSG
 
 // 선 그리기 메시지 형식
 // sizeof(DRAWLINE_MSG) == 256
-struct DRAWLINE_MSG
+struct DRAW_MSG
 {
     int  type;
     int  color;
@@ -50,39 +50,6 @@ struct DRAWLINE_MSG
     char dummy[BUFSIZE - 6 * sizeof(int)];
 };
 
-/*----  Term Project 구현 사항  ----*/
-struct DRAWRECT_MSG {
-    int type;
-    int color;
-    int x0, y0;
-    int x1, y1;
-    int width;
-    int height;
-    char dummy[BUFSIZE - 6 * sizeof(int)];
-};
-//직사각형 그리기 형식
-
-struct DRAWCIR_MSG {
-    int type;
-    int color;
-    double rad;
-    int x0, y0;
-    int x1, y1;
-    char dummy[BUFSIZE - 6 * sizeof(int)];
-};
-//원 같은 경우는 시작하는 점 기준으로
-//width와 height이 바뀌는 것을 토대로 타원 모양일지 원 모양일지 결정
-
-struct DRAWTRI_MSG {
-    int type;
-    int color;
-    int x0, y0;
-    int x1, y1;
-    char dummy[BUFSIZE - 6 * sizeof(int)];
-};
-//삼각형 같은 경우는 시작하는 점을 기준으로 조절하는 길이 비율이 조절 됨
-//예를 들면 처음 특정 점에서 시작하면 width를 조절하면 밑변의 길이가 조절이 되고
-//height를 조절하면 높이가 조절이 되는 식으로 ㅇㅇ 
 
 static HINSTANCE     g_hInst; // 응용 프로그램 인스턴스 핸들
 static HWND          g_hDrawWnd; // 그림을 그릴 윈도우
@@ -96,14 +63,8 @@ static volatile BOOL g_bStart; // 통신 시작 여부
 static SOCKET        g_sock; // 클라이언트 소켓
 static HANDLE        g_hReadEvent, g_hWriteEvent; // 이벤트 핸들
 static CHAT_MSG      g_chatmsg; // 채팅 메시지 저장
-static DRAWLINE_MSG  g_drawmsg; // 선 그리기 메시지 저장
+static DRAW_MSG  g_drawmsg; // 선 그리기 메시지 저장
 static int           g_drawcolor; // 선 그리기 색상
-
-//Term Project 구현 사항
-static DRAWRECT_MSG  g_drawRec; //직사각형 그리기 메시지 저장
-static DRAWCIR_MSG   g_drawCir; //원 그리기 메시지 저장
-static DRAWTRI_MSG   g_drawTri; //삼각형 그리기 메시지 저장
-static int           g_drawMode;
 
 // 대화상자 프로시저
 BOOL CALLBACK DlgProc(HWND, UINT, WPARAM, LPARAM);
@@ -139,17 +100,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     g_chatmsg.type = CHATTING;
     g_drawmsg.type = DRAWLINE;
     g_drawmsg.color = RGB(255, 0, 0);
-  
-    g_drawMode = 0; //기본 모드는 선 그리기 모드
-    //Term Project 구현 된 변수 초기화
-    g_drawRec.type = DRAWREC;
-    g_drawRec.color = RGB(255, 0, 0);
-  
-    g_drawCir.type = DRAWCIR;
-    g_drawCir.color = RGB(255, 0, 0);
-  
-    g_drawTri.type = DRAWTRI;
-    g_drawTri.color = RGB(255, 0, 0);
    
     // 대화상자 생성
     g_hInst = hInstance;
@@ -259,12 +209,12 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return TRUE;
         case IDC_LOGIN:
             //ID PW를 일단 보낸다 -> 서버에 저장된 놈과 다르다면 뱉어냄
-            WaitForSingleObject(g_hReadEvent, INFINITE);
+            /*WaitForSingleObject(g_hReadEvent, INFINITE);
             GetDlgItemText(hDlg, IDC_MSG, g_chatmsg.buf, MSGSIZE);
             // 쓰기 완료를 알림
             SetEvent(g_hWriteEvent);
-            // 입력된 텍스트 전체를 선택 표시
-            SendMessage(hEditMsg, EM_SETSEL, 0, -1);
+             //입력된 텍스트 전체를 선택 표시
+            SendMessage(hEditMsg, EM_SETSEL, 0, -1);*/
             return TRUE;
         case IDC_SENDMSG:
             //보내기 버튼 case
@@ -280,45 +230,36 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case IDC_COLORRED:
             //빨간색 버튼 case
             g_drawmsg.color = RGB(255, 0, 0);
-            g_drawRec.color = RGB(255, 0, 0);
-            g_drawCir.color = RGB(255, 0, 0);
-            g_drawTri.color = RGB(255, 0, 0);
             return TRUE;
 
         case IDC_COLORGREEN:
             //초록색 버튼 case
             g_drawmsg.color = RGB(0, 255, 0);
-            g_drawRec.color = RGB(0, 255, 0);
-            g_drawCir.color = RGB(0, 255, 0);
-            g_drawTri.color = RGB(0, 255, 0);
             return TRUE;
 
         case IDC_COLORBLUE:
             //파란색 버튼 case
             g_drawmsg.color = RGB(0, 0, 255);
-            g_drawRec.color = RGB(0, 0, 255);
-            g_drawCir.color = RGB(0, 0, 255);
-            g_drawTri.color = RGB(0, 0, 255);
             return TRUE;
 
         case IDC_LINE:
             //기본값은 선 그리기 -> 어찌됬건 이놈을 눌렀을 때
-            g_drawMode = 0;
+            g_drawmsg.type = DRAWLINE;
             return TRUE;
 
         case IDC_REC:
             //직사각형 그리기
-            g_drawMode = 1;
+            g_drawmsg.type = DRAWREC;
             return TRUE;
 
         case IDC_CIR:
             //원 그리기
-            g_drawMode = 2; 
+            g_drawmsg.type = DRAWCIR;
             return TRUE;
 
         case IDC_TRI:
             //삼각형 그리기
-            g_drawMode = 3; 
+            g_drawmsg.type = DRAWTRI;
             return TRUE;
 
         case IDCANCEL:
@@ -349,9 +290,9 @@ DWORD WINAPI ClientMain(LPVOID arg)
         //소켓 생성
         if (g_sock == INVALID_SOCKET) err_quit("socket()");
 
-        u_long on = 1;
+        /*u_long on = 1;
         retval = ioctlsocket(g_sock, FIONBIO, &on);
-        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");
+        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");*/
         //넌블로킹 소켓 전환
 
         // connect()
@@ -425,10 +366,7 @@ DWORD WINAPI ReadThread(LPVOID arg)
     int retval;
     COMM_MSG comm_msg;
     CHAT_MSG *chat_msg;
-    DRAWLINE_MSG *draw_msg;
-    DRAWRECT_MSG *rect_msg;
-    DRAWTRI_MSG *tri_msg;
-    DRAWCIR_MSG *cir_msg;
+    DRAW_MSG *draw_msg;
 
     while (1) {
         retval = recvn(g_sock, (char *)&comm_msg, BUFSIZE, 0);
@@ -441,36 +379,15 @@ DWORD WINAPI ReadThread(LPVOID arg)
             DisplayText("[받은 메시지] %s\r\n", chat_msg->buf);
         }
 
-        else if (comm_msg.type == DRAWLINE) {
-            draw_msg = (DRAWLINE_MSG *)&comm_msg;
+        else if (comm_msg.type == DRAWLINE || comm_msg.type == DRAWREC ||
+            comm_msg.type == DRAWTRI || comm_msg.type == DRAWCIR) {
+            draw_msg = (DRAW_MSG *)&comm_msg;
             g_drawcolor = draw_msg->color;
             SendMessage(g_hDrawWnd, WM_DRAWIT,
                 MAKEWPARAM(draw_msg->x0, draw_msg->y0),
                 MAKELPARAM(draw_msg->x1, draw_msg->y1));
         }
-        else if (comm_msg.type == DRAWREC) {
-            rect_msg = (DRAWRECT_MSG*)&comm_msg;
-            g_drawcolor = rect_msg->color;
-            SendMessage(g_hDrawWnd, WM_DRAWIT,
-                MAKEWPARAM(rect_msg->x0, rect_msg->y0),
-                MAKELPARAM(rect_msg->x1, rect_msg->y1));
-        }
-        else if (comm_msg.type == DRAWTRI) {
-            tri_msg = (DRAWTRI_MSG*)&comm_msg;
-            g_drawcolor = tri_msg->color;
-            SendMessage(g_hDrawWnd, WM_DRAWIT,
-                MAKEWPARAM(tri_msg->x0, tri_msg->y0),
-                MAKELPARAM(tri_msg->x1, tri_msg->y1));
-        }
-        else if (comm_msg.type == DRAWCIR) {
-            cir_msg = (DRAWCIR_MSG*)&comm_msg;
-            g_drawcolor = cir_msg->color;
-            SendMessage(g_hDrawWnd, WM_DRAWIT,
-                MAKEWPARAM(cir_msg->x0, cir_msg->y0),
-                MAKELPARAM(cir_msg->x1, cir_msg->y1));
-        }
     }
-
     return 0;
 }
 
@@ -553,7 +470,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_MOUSEMOVE:
         if (bDrawing && g_bStart) {
             //g_bStart와 bDrawing이 일치중이라면?
-            if (g_drawMode == 0) {
+            if (g_drawmsg.type == DRAWLINE) {
                 //직선 그리기 모드
                 x1 = LOWORD(lParam);
                 y1 = HIWORD(lParam);
@@ -571,42 +488,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 //계속해서 갱신되는 아저씨랑 이퀄 처리
                 //선이 그려지는 것을 표현
             }
-            else if (g_drawMode == 1) {
-                //직사각형 그리기 모드
+            else {
+                //그외 나머지 그리기 모드
                 x1 = LOWORD(lParam);
                 y1 = HIWORD(lParam);
 
-                g_drawRec.x0 = x0;
-                g_drawRec.y0 = y0;
-                //얘들은 마우스 버튼 눌러졌을 때 이후로 변화없음
-                g_drawRec.x1 = x1;
-                g_drawRec.y1 = y1;
+                g_drawmsg.x0 = x0;
+                g_drawmsg.y0 = y0;
+                
+                g_drawmsg.x1 = x1;
+                g_drawmsg.y1 = y1;
             }
-            else if (g_drawMode == 2) {
-                //원 그리기 모드
-                x1 = LOWORD(lParam);
-                y1 = HIWORD(lParam);
-
-                g_drawCir.x0 = x0;
-                g_drawCir.y0 = y0;
-                //얘들은 마우스 버튼 눌러졌을 때 이후로 변화없음
-                g_drawCir.x1 = x1;
-                g_drawCir.y1 = y1;                
-
-            }
-            else if (g_drawMode == 3) {
-                //삼각형 그리기 모드
-                x1 = LOWORD(lParam);
-                y1 = HIWORD(lParam);
-
-                g_drawTri.x0 = x0;
-                g_drawTri.y0 = y0;
-                //얘들은 마우스 버튼 눌러졌을 때 이후로 변화없음
-                g_drawTri.x1 = x1;
-                g_drawTri.y1 = y1;
-                //계속 변하는 아저씨들
-            }
-            
         }
 
         return 0;
@@ -614,24 +506,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         //Left Button이 Up 된 상태
         bDrawing = FALSE;
         //Drawing은 False 처리
-        if (g_drawMode != 0) {
-            if (g_drawMode == 1) {
-                send(g_sock, (char*)&g_drawRec, BUFSIZE, 0);
-            }
-            else if (g_drawMode == 2) {
-                send(g_sock, (char*)&g_drawCir, BUFSIZE, 0);
-            }
-            else if (g_drawMode == 3) {
-                send(g_sock, (char*)&g_drawTri, BUFSIZE, 0);
-            }
-        }
+        if (g_drawmsg.type != DRAWLINE) send(g_sock, (char*)&g_drawmsg, BUFSIZE, 0);
         return 0;
     case WM_DRAWIT:
         //사용자 정의 ㅇㅇ
         hDC = GetDC(hWnd);
         hPen = CreatePen(PS_SOLID, 3, g_drawcolor);
         //wParam -> Point 0, lParam -> Point 1
-        if (g_drawMode == 0) {
+        if (g_drawmsg.type == DRAWLINE) {
             // 화면에 그리기
             hOldPen = (HPEN)SelectObject(hDC, hPen);
             MoveToEx(hDC, LOWORD(wParam), HIWORD(wParam), NULL);
@@ -644,7 +526,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             LineTo(hDCMem, LOWORD(lParam), HIWORD(lParam));
             SelectObject(hDC, hOldPen);
         }
-        else if (g_drawMode == 1) {
+        else if (g_drawmsg.type == DRAWREC) {
             hOldPen = (HPEN)SelectObject(hDC, hPen);
             Rectangle(hDC, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
             SelectObject(hDC, hOldPen);
@@ -654,7 +536,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             SelectObject(hDC, hOldPen);
 
         }
-        else if (g_drawMode == 2) {
+        else if (g_drawmsg.type == DRAWCIR) {
             hOldPen = (HPEN)SelectObject(hDC, hPen);
             Ellipse(hDC, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
             SelectObject(hDC, hOldPen);
@@ -663,7 +545,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             Ellipse(hDCMem, LOWORD(wParam), HIWORD(wParam), LOWORD(lParam), HIWORD(lParam));
             SelectObject(hDC, hOldPen);
         }
-        else if (g_drawMode == 3) {
+        else if (g_drawmsg.type == DRAWTRI) {
             
             //wParam, lParam 을 통해서 기준을 하나 잡는다. 어찌됬건 이녀석을 기준으로 하나의 사각형이 나옴
             //직사각형을 통해 세개의 점에 대해 분석 해 낸다 -> 그다음 각각 줄을 그어주는 게 삼각형 만드는 원리?
