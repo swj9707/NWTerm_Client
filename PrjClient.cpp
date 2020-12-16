@@ -20,6 +20,7 @@
 #define DRAWREC     1002
 #define DRAWCIR     1003
 #define DRAWTRI     1004
+#define PERMITTION  1005
 
 #define WM_DRAWIT   (WM_USER+1)            // 사용자 정의 윈도우 메시지
 
@@ -36,6 +37,12 @@ struct COMM_MSG
 struct CHAT_MSG
 {
     int  type;
+    char buf[MSGSIZE];
+};
+
+//Permission Msg
+struct PERMISSION_MSG {
+    int type;
     char buf[MSGSIZE];
 };
 
@@ -104,6 +111,8 @@ static DRAWRECT_MSG  g_drawRec; //직사각형 그리기 메시지 저장
 static DRAWCIR_MSG   g_drawCir; //원 그리기 메시지 저장
 static DRAWTRI_MSG   g_drawTri; //삼각형 그리기 메시지 저장
 static int           g_drawMode;
+static PERMISSION_MSG g_PermMSG;
+
 
 // 대화상자 프로시저
 BOOL CALLBACK DlgProc(HWND, UINT, WPARAM, LPARAM);
@@ -242,6 +251,7 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             // 소켓 통신 스레드 시작
             g_hClientThread = CreateThread(NULL, 0, ClientMain, NULL, 0, NULL);
+            //차라리 여기서 처리를 해야 하나?
             if (g_hClientThread == NULL) {
                 MessageBox(hDlg, "클라이언트를 시작할 수 없습니다."
                     "\r\n프로그램을 종료합니다.", "실패!", MB_ICONERROR);
@@ -258,13 +268,9 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             return TRUE;
         case IDC_LOGIN:
-            //ID PW를 일단 보낸다 -> 서버에 저장된 놈과 다르다면 뱉어냄
-            WaitForSingleObject(g_hReadEvent, INFINITE);
-            GetDlgItemText(hDlg, IDC_MSG, g_chatmsg.buf, MSGSIZE);
-            // 쓰기 완료를 알림
-            SetEvent(g_hWriteEvent);
-            // 입력된 텍스트 전체를 선택 표시
-            SendMessage(hEditMsg, EM_SETSEL, 0, -1);
+            // 입력 된 ID와 PW를 받아온다
+            // g_PerMSG에 넣어서 보낸다
+            // 리턴에 따라서 그걸 처리한다....? -> 어떻게 돌려받을 것인가?
             return TRUE;
         case IDC_SENDMSG:
             //보내기 버튼 case
@@ -349,9 +355,9 @@ DWORD WINAPI ClientMain(LPVOID arg)
         //소켓 생성
         if (g_sock == INVALID_SOCKET) err_quit("socket()");
 
-        u_long on = 1;
+        /*u_long on = 1;
         retval = ioctlsocket(g_sock, FIONBIO, &on);
-        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");
+        if (retval == SOCKET_ERROR) err_quit("ioctlsocket()");*/
         //넌블로킹 소켓 전환
 
         // connect()
