@@ -43,7 +43,6 @@ struct CHAT_MSG
 //Permission Msg
 struct PER_MSG {
     int type;
-
     char ID[20];
     char PW[20];
     char buf[MSGSIZE];
@@ -60,6 +59,8 @@ struct DRAW_MSG
     char dummy[BUFSIZE - 6 * sizeof(int)];
 };
 
+const char AdminID[6] = "ADMIN";
+const char AdminPW[5] = "1234";
 
 static HINSTANCE     g_hInst; // 응용 프로그램 인스턴스 핸들
 static HWND          g_hDrawWnd; // 그림을 그릴 윈도우
@@ -114,6 +115,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     g_drawmsg.type = DRAWLINE;
     g_drawmsg.color = RGB(255, 0, 0);
 
+    g_permsg.type = PERMITTION;
+
     // 대화상자 생성
     g_hInst = hInstance;
     DialogBox(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, DlgProc);
@@ -161,7 +164,6 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         hEditId = GetDlgItem(hDlg, IDC_ID);
         hEditPw = GetDlgItem(hDlg, IDC_PW);
         
-
         // 컨트롤 초기화
         SendMessage(hEditMsg, EM_SETLIMITTEXT, MSGSIZE, 0);
         EnableWindow(g_hButtonSendMsg, FALSE);
@@ -174,7 +176,6 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         SendMessage(hEditId, EM_SETLIMITTEXT, 20, 0);
         SendMessage(hEditPw, EM_SETLIMITTEXT, 20, 0);
         EnableWindow(g_permsgButton, FALSE);
-
 
         // 윈도우 클래스 등록
         WNDCLASS wndclass;
@@ -226,11 +227,12 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else {
                 EnableWindow(hButtonConnect, FALSE);
-                while (g_bStart == FALSE); // 서버 접소 ㄱ기다림
+                while (g_bStart == FALSE); // 서버 접속 기다림
                 EnableWindow(hButtonIsIPv6, FALSE);
                 EnableWindow(hEditIPaddr, FALSE);
                 EnableWindow(hEditPort, FALSE);
                 EnableWindow(g_hButtonSendMsg, TRUE);
+                EnableWindow(g_permsgButton, TRUE);
                 SetFocus(hEditMsg);
             }
             return TRUE;
@@ -389,6 +391,7 @@ DWORD WINAPI ReadThread(LPVOID arg)
     COMM_MSG comm_msg;
     CHAT_MSG *chat_msg;
     DRAW_MSG *draw_msg;
+    PER_MSG  *per_msg;
 
     while (1) {
         retval = recvn(g_sock, (char *)&comm_msg, BUFSIZE, 0);
@@ -408,6 +411,13 @@ DWORD WINAPI ReadThread(LPVOID arg)
             SendMessage(g_hDrawWnd, WM_DRAWIT,
                 MAKEWPARAM(draw_msg->x0, draw_msg->y0),
                 MAKELPARAM(draw_msg->x1, draw_msg->y1));
+        }
+        else if (comm_msg.type == PERMITTION) {
+            per_msg = (PER_MSG*)&comm_msg;
+            if (strcmp(per_msg->ID, AdminID) && strcmp(per_msg->PW, AdminPW)) {
+                DisplayText("[로그인 완료]\r\n");
+            }
+
         }
     }
     return 0;
