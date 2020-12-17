@@ -236,7 +236,7 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 EnableWindow(hButtonIsIPv6, FALSE);
                 EnableWindow(hEditIPaddr, FALSE);
                 EnableWindow(hEditPort, FALSE);
-                EnableWindow(g_hButtonSendMsg, TRUE);
+                //EnableWindow(g_hButtonSendMsg, TRUE);
                 EnableWindow(g_permsgButton, TRUE);
                 SetFocus(hEditMsg);
             }
@@ -414,11 +414,12 @@ DWORD WINAPI ReadThread(LPVOID arg)
             per_msg = (PER_MSG*)&comm_msg;
             if (!strcmp(per_msg->ID, AdminID) && !strcmp(per_msg->PW, AdminPW)) {
                 DisplayText("[로그인 완료] ID : %s\r\n", per_msg->ID);
-                g_permission == TRUE;
+                g_permission = TRUE;
+                EnableWindow(g_hButtonSendMsg, TRUE);
+                EnableWindow(g_permsgButton, FALSE);
             }
             else {
                 DisplayText("[오류] : 아이디와 비밀번호를 확인하여 주십시오\r\n");
-                DisplayText("Debug : id : %s pw : %s\r\n", per_msg->ID, per_msg->PW);
             }
         }
     }
@@ -434,9 +435,6 @@ DWORD WINAPI WriteThread(LPVOID arg)
     while (1) {
         // 쓰기 완료 기다리기
         WaitForSingleObject(g_hWriteEvent, INFINITE);
-
-        //이 아저씨를 통해 알 수 있는 사실 -> 이쪽을 통해야 한다?
-       
         // 문자열 길이가 0이면 보내지 않음
         if (strlen(g_chatmsg.buf) == 0) {
             // '메시지 전송' 버튼 활성화
@@ -445,20 +443,16 @@ DWORD WINAPI WriteThread(LPVOID arg)
             SetEvent(g_hReadEvent);
             continue;
         }
-
         // 데이터 보내기
         retval = send(g_sock, (char*)&g_chatmsg, BUFSIZE, 0);
-        //char msg만 이걸 통해???
         if (retval == SOCKET_ERROR) {
             break;
         }
-
         // '메시지 전송' 버튼 활성화
         EnableWindow(g_hButtonSendMsg, TRUE);
         // 읽기 완료 알리기
         SetEvent(g_hReadEvent);
     }
-
     return 0;
 }
 
@@ -512,8 +506,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_drawmsg.y0 = y0;
                 g_drawmsg.x1 = x1;
                 g_drawmsg.y1 = y1;
-                send(g_sock, (char*)&g_drawmsg, BUFSIZE, 0);
-
+                if(g_permission == TRUE) send(g_sock, (char*)&g_drawmsg, BUFSIZE, 0);
+                
                 x0 = x1;
                 y0 = y1;
             }
@@ -532,9 +526,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         return 0;
     case WM_LBUTTONUP:
+        //DRAWLINE이 아닌 이상 마우스의 LButton이 UP되었을 때 그리기가 끝난다.
         bDrawing = FALSE;
-        if (g_drawmsg.type != DRAWLINE) send(g_sock, (char*)&g_drawmsg, BUFSIZE, 0);
-        //DRAWLINE이 아닌 이상 마우스의 LButton이 UP되었을 때 그리기가 끝난다. 
+        if (g_drawmsg.type != DRAWLINE) {
+            if(g_permission == TRUE) send(g_sock, (char*)&g_drawmsg, BUFSIZE, 0);
+        }
         return 0;
     case WM_DRAWIT:
         hDC = GetDC(hWnd);
