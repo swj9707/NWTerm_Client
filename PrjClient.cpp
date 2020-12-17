@@ -25,7 +25,7 @@
 #define WM_DRAWIT   (WM_USER+1)            // 사용자 정의 윈도우 메시지
 
 // 공통 메시지 형식
-// sizeof(COMM_MSG) == 256
+// sizeof(COMM_MSG) == 256;
 struct COMM_MSG
 {
     int  type;
@@ -41,8 +41,11 @@ struct CHAT_MSG
 };
 
 //Permission Msg
-struct PERMISSION_MSG {
+struct PER_MSG {
     int type;
+
+    char ID[20];
+    char PW[20];
     char buf[MSGSIZE];
 };
 
@@ -73,7 +76,8 @@ static CHAT_MSG      g_chatmsg; // 채팅 메시지 저장
 static DRAW_MSG      g_drawmsg; // 그리기 메시지 저장
 static int           g_drawcolor; // 그리기 색상
 
-
+static PER_MSG       g_permsg;// 권한 메시지
+static HWND          g_permsgButton; // 로그인 메시지(권한) 전달 버튼
 
 // 대화상자 프로시저
 BOOL CALLBACK DlgProc(HWND, UINT, WPARAM, LPARAM);
@@ -134,6 +138,10 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     static HWND hColorRed;
     static HWND hColorGreen;
     static HWND hColorBlue;
+    
+    static HWND hPermMsg;
+    static HWND hEditId;
+    static HWND hEditPw;
 
     switch (uMsg) {
     case WM_INITDIALOG:
@@ -149,6 +157,11 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         hColorGreen = GetDlgItem(hDlg, IDC_COLORGREEN);
         hColorBlue = GetDlgItem(hDlg, IDC_COLORBLUE);
 
+        g_permsgButton = GetDlgItem(hDlg, IDC_LOGIN);
+        hEditId = GetDlgItem(hDlg, IDC_ID);
+        hEditPw = GetDlgItem(hDlg, IDC_PW);
+        
+
         // 컨트롤 초기화
         SendMessage(hEditMsg, EM_SETLIMITTEXT, MSGSIZE, 0);
         EnableWindow(g_hButtonSendMsg, FALSE);
@@ -157,6 +170,11 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         SendMessage(hColorRed, BM_SETCHECK, BST_CHECKED, 0);
         SendMessage(hColorGreen, BM_SETCHECK, BST_UNCHECKED, 0);
         SendMessage(hColorBlue, BM_SETCHECK, BST_UNCHECKED, 0);
+
+        SendMessage(hEditId, EM_SETLIMITTEXT, 20, 0);
+        SendMessage(hEditPw, EM_SETLIMITTEXT, 20, 0);
+        EnableWindow(g_permsgButton, FALSE);
+
 
         // 윈도우 클래스 등록
         WNDCLASS wndclass;
@@ -217,6 +235,10 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             return TRUE;
         case IDC_LOGIN:
+            WaitForSingleObject(g_hReadEvent, INFINITE);
+            GetDlgItemText(hDlg, IDC_ID, g_permsg.ID, sizeof(g_permsg.ID));
+            GetDlgItemText(hDlg, IDC_PW, g_permsg.PW, sizeof(g_permsg.PW));
+            SetEvent(g_hWriteEvent);
             // 입력 된 ID와 PW를 받아온다
             // g_PerMSG에 넣어서 보낸다
             // 리턴에 따라서 그걸 처리한다....? -> 어떻게 돌려받을 것인가?
