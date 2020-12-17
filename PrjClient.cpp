@@ -415,8 +415,9 @@ DWORD WINAPI ReadThread(LPVOID arg)
         else if (comm_msg.type == PERMITTION) {
             per_msg = (PER_MSG*)&comm_msg;
             if (strcmp(per_msg->ID, AdminID) && strcmp(per_msg->PW, AdminPW)) {
-                DisplayText("[로그인 완료]\r\n");
+                DisplayText("[로그인 완료] ID : %s\r\n", per_msg->ID);
             }
+            else DisplayText("[오류] : 아이디와 비밀번호를 확인하여 주십시오\r\n");
 
         }
     }
