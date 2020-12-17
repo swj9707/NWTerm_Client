@@ -45,7 +45,7 @@ struct PER_MSG {
     int type;
     char ID[20];
     char PW[20];
-    char buf[MSGSIZE];
+    char dummy[BUFSIZE- sizeof(int) - 2 * 40 * sizeof(char)];
 };
 
 // 그리기 메시지 형식
@@ -79,6 +79,7 @@ static int           g_drawcolor; // 그리기 색상
 
 static PER_MSG       g_permsg;// 권한 메시지
 static HWND          g_permsgButton; // 로그인 메시지(권한) 전달 버튼
+static BOOL          g_permission;// 로그인이 되었습니까?
 
 // 대화상자 프로시저
 BOOL CALLBACK DlgProc(HWND, UINT, WPARAM, LPARAM);
@@ -116,6 +117,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     g_drawmsg.color = RGB(255, 0, 0);
 
     g_permsg.type = PERMITTION;
+    g_permission = FALSE;
 
     // 대화상자 생성
     g_hInst = hInstance;
