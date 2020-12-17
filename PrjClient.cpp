@@ -46,7 +46,7 @@ struct PERMISSION_MSG {
     char buf[MSGSIZE];
 };
 
-// 선 그리기 메시지 형식
+// 그리기 메시지 형식
 // sizeof(DRAWLINE_MSG) == 256
 struct DRAW_MSG
 {
