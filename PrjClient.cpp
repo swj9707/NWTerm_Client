@@ -59,8 +59,8 @@ struct DRAW_MSG
     char dummy[BUFSIZE - 6 * sizeof(int)];
 };
 
-const char AdminID[6] = "ADMIN";
-const char AdminPW[5] = "1234";
+const char AdminID[20] = "ADMIN";
+const char AdminPW[20] = "1234";
 
 static HINSTANCE     g_hInst; // 응용 프로그램 인스턴스 핸들
 static HWND          g_hDrawWnd; // 그림을 그릴 윈도우
@@ -191,6 +191,9 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         wndclass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
         wndclass.lpszMenuName = NULL;
         wndclass.lpszClassName = "MyWndClass";
+
+        CheckRadioButton(hDlg, IDC_COLORRED, IDC_COLORBLUE, IDC_COLORRED);
+        CheckRadioButton(hDlg, IDC_LINE, IDC_REC, IDC_LINE);
         if (!RegisterClass(&wndclass)) return 1;
 
         // 자식 윈도우 생성
@@ -243,16 +246,9 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             GetDlgItemText(hDlg, IDC_ID, g_permsg.ID, sizeof(g_permsg.ID));
             GetDlgItemText(hDlg, IDC_PW, g_permsg.PW, sizeof(g_permsg.PW));
             SetEvent(g_hWriteEvent);
-            // 입력 된 ID와 PW를 받아온다
-            // g_PerMSG에 넣어서 보낸다
-            // 리턴에 따라서 그걸 처리한다....? -> 어떻게 돌려받을 것인가?
-            //ID PW를 일단 보낸다 -> 서버에 저장된 놈과 다르다면 뱉어냄
-            /*WaitForSingleObject(g_hReadEvent, INFINITE);
-            GetDlgItemText(hDlg, IDC_MSG, g_chatmsg.buf, MSGSIZE);
-            // 쓰기 완료를 알림
-            SetEvent(g_hWriteEvent);
-             //입력된 텍스트 전체를 선택 표시
-            SendMessage(hEditMsg, EM_SETSEL, 0, -1);*/
+            SendMessage(hEditId, EM_SETSEL, 0, -1);
+            SendMessage(hEditPw, EM_SETSEL, 0, -1);
+            send(g_sock, (char*)&g_permsg, BUFSIZE, 0);
             return TRUE;
         case IDC_SENDMSG:
             //Send Message case
@@ -416,11 +412,14 @@ DWORD WINAPI ReadThread(LPVOID arg)
         }
         else if (comm_msg.type == PERMITTION) {
             per_msg = (PER_MSG*)&comm_msg;
-            if (strcmp(per_msg->ID, AdminID) && strcmp(per_msg->PW, AdminPW)) {
+            if (!strcmp(per_msg->ID, AdminID) && !strcmp(per_msg->PW, AdminPW)) {
                 DisplayText("[로그인 완료] ID : %s\r\n", per_msg->ID);
+                g_permission == TRUE;
             }
-            else DisplayText("[오류] : 아이디와 비밀번호를 확인하여 주십시오\r\n");
-
+            else {
+                DisplayText("[오류] : 아이디와 비밀번호를 확인하여 주십시오\r\n");
+                DisplayText("Debug : id : %s pw : %s\r\n", per_msg->ID, per_msg->PW);
+            }
         }
     }
     return 0;
@@ -437,7 +436,7 @@ DWORD WINAPI WriteThread(LPVOID arg)
         WaitForSingleObject(g_hWriteEvent, INFINITE);
 
         //이 아저씨를 통해 알 수 있는 사실 -> 이쪽을 통해야 한다?
-
+       
         // 문자열 길이가 0이면 보내지 않음
         if (strlen(g_chatmsg.buf) == 0) {
             // '메시지 전송' 버튼 활성화
@@ -449,6 +448,7 @@ DWORD WINAPI WriteThread(LPVOID arg)
 
         // 데이터 보내기
         retval = send(g_sock, (char*)&g_chatmsg, BUFSIZE, 0);
+        //char msg만 이걸 통해???
         if (retval == SOCKET_ERROR) {
             break;
         }
@@ -479,7 +479,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg) {
     case WM_CREATE:
         hDC = GetDC(hWnd);
-
+        
         // 화면을 저장할 비트맵 생성
         cx = GetDeviceCaps(hDC, HORZRES);
         cy = GetDeviceCaps(hDC, VERTRES);
@@ -504,6 +504,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_MOUSEMOVE:
         if (bDrawing && g_bStart) {
             if (g_drawmsg.type == DRAWLINE) {
+                //선을 그릴 때
                 x1 = LOWORD(lParam);
                 y1 = HIWORD(lParam);
 
@@ -517,6 +518,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 y0 = y1;
             }
             else {
+                //그외 나머지
                 x1 = LOWORD(lParam);
                 y1 = HIWORD(lParam);
 
@@ -532,6 +534,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_LBUTTONUP:
         bDrawing = FALSE;
         if (g_drawmsg.type != DRAWLINE) send(g_sock, (char*)&g_drawmsg, BUFSIZE, 0);
+        //DRAWLINE이 아닌 이상 마우스의 LButton이 UP되었을 때 그리기가 끝난다. 
         return 0;
     case WM_DRAWIT:
         hDC = GetDC(hWnd);
