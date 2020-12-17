@@ -434,6 +434,8 @@ DWORD WINAPI WriteThread(LPVOID arg)
         // 쓰기 완료 기다리기
         WaitForSingleObject(g_hWriteEvent, INFINITE);
 
+        //이 아저씨를 통해 알 수 있는 사실 -> 이쪽을 통해야 한다?
+
         // 문자열 길이가 0이면 보내지 않음
         if (strlen(g_chatmsg.buf) == 0) {
             // '메시지 전송' 버튼 활성화
